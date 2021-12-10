@@ -1,0 +1,5 @@
+add_executable(8192 8192.c)
+target_link_libraries(8192 mingw32)
+target_link_libraries(8192 SDL2main)
+target_link_libraries(8192 SDL2)
+target_link_libraries(8192 SDL2_image)
