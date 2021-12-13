@@ -5,35 +5,57 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
-void StartAndLoad();
+void PlayUI(SDL_Event PlayEvent);//游戏界面
 
-void FreeAndQuit();
+void Move(int Dir1, int Dir2);//移动面板_核心算法
 
-void PlayUI(SDL_Event PlayEvent);
+void RandomCreate();//随机生成2或4
 
-void Move(int Dir1, int Dir2);
+void SaveMap();//储存面板
 
-void PrintNotes();
+void Revoke();//撤回一步
 
-void RandomCreate();
+void Pause();//暂停游戏
 
-void SaveMap();
+void Restart();//重开游戏
 
-void Revoke();
+void IfOver();//判断是否游戏结束
 
-void Restart();
+void GameOverMsgbox();//游戏结束弹窗
 
-int IfBegin = 0;
+void GameWinMsgbox();//游戏胜利弹窗
+
+void GamePauseMsgbox();//游戏暂停弹窗
+
+void GameRestartMsgbox();//游戏重开弹窗
+
+void PrintAll();//清空渲染器，重新打印全部
+
+void PrintTime();//打印计时器的时间
+
+void PrintScores();//打印分数与最高分
+
+void PrintNotes();//打印数字方块
+
+void StartAndLoad();//启动并加载图片和字体
+
+void FreeAndQuit();//清除所有加载项并退出
+
+int IfBegin = 0, IfWin = 0;
 
 int Score = 0, OldScore = 0, BestScore = 0, OldBestScore = 0;
+char ScoreChar[10], BestScoreChar[10];
 
 int DownButtonX, DownButtonY, UpButtonX, UpButtonY;
 
+time_t PlayStartTime, PlayEndTime, PauseTime;
+char TimeChar[10];
+
 int Map[4][4] = {
-        {0, 2, 64, 128},
-        {0, 2, 32, 256},
-        {0, 2, 16, 512},
-        {0, 4, 8,  1024}
+        {0, 16, 32,  4096},
+        {0, 8,  64,  2048},
+        {0, 4,  128, 1024},
+        {0, 2,  256, 512}
 };
 
 // int Map[4][4] = {
@@ -58,6 +80,18 @@ SDL_Texture *MainBackGroundTexture = NULL;
 
 SDL_Surface *PlayBackGroundSurface = NULL;
 SDL_Texture *PlayBackGroundTexture = NULL;
+
+TTF_Font *ScoreFont = NULL;
+SDL_Surface *ScoreSurface = NULL;
+SDL_Texture *ScoreTexture = NULL;
+SDL_Rect ScoreRect;
+
+TTF_Font *TimeFont = NULL;
+SDL_Surface *TimeSurface = NULL;
+SDL_Texture *TimeTexture = NULL;
+SDL_Rect TimeRect;
+
+SDL_Color FontColor = {255, 255, 255, 255};
 
 SDL_Surface *Note2Surface = NULL;
 SDL_Texture *Note2Texture = NULL;
@@ -111,6 +145,7 @@ SDL_Surface *Note8192Surface = NULL;
 SDL_Texture *Note8192Texture = NULL;
 SDL_Rect Note8192Rect;
 
+
 int main(int argc, char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
@@ -120,7 +155,7 @@ int main(int argc, char *argv[]) {
     SDL_Event PlayEvent;
     StartAndLoad();
     printf("MainEvent\n");
-    while (SDL_WaitEvent(&MainEvent) || SDL_PollEvent(&MainEvent)) {
+    while (SDL_WaitEvent(&MainEvent)) {
         SDL_RenderClear(Renderer);
         SDL_RenderCopy(Renderer, MainBackGroundTexture, NULL, NULL);
         SDL_RenderPresent(Renderer);
@@ -129,7 +164,7 @@ int main(int argc, char *argv[]) {
                 FreeAndQuit();
             case SDL_MOUSEBUTTONDOWN:
                 printf("(%d,%d)\n", MainEvent.button.x, MainEvent.button.y);
-                if (MainEvent.button.x > 212 && MainEvent.button.x < 604 && MainEvent.button.y > 656 && MainEvent.button.y < 772) {
+                if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
                     if (!IfBegin)
                         RandomCreate();
                     PlayUI(PlayEvent);
@@ -163,83 +198,247 @@ int main(int argc, char *argv[]) {
 
 
 void PlayUI(SDL_Event PlayEvent) {
+    PlayStartTime = time(NULL);
     IfBegin = 1;
     printf("PlayEvent\n");
-    while (SDL_WaitEvent(&PlayEvent) || SDL_PollEvent(&PlayEvent)) {
-        SDL_RenderCopy(Renderer, PlayBackGroundTexture, NULL, NULL);
-        PrintNotes();
-        switch (PlayEvent.type) {
-            case SDL_QUIT:
-                FreeAndQuit();
-            case SDL_KEYDOWN:
-                switch (PlayEvent.key.keysym.sym) {
-                    case SDLK_ESCAPE:
-                    case SDLK_BACKSPACE:
-                        printf("MainEvent\n");
-                        return;
-                    case SDLK_z:
-                        Revoke();
-                        printf("REVOKE\n");
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    case SDLK_r:
-                        Restart();
-                        printf("RESTART\n");
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    case SDLK_w:
-                    case SDLK_UP:
+    while (1) {
+        PrintAll();
+        while (SDL_WaitEventTimeout(&PlayEvent, 100)) {
+            switch (PlayEvent.type) {
+                case SDL_QUIT:
+                    FreeAndQuit();
+                case SDL_KEYDOWN:
+                    switch (PlayEvent.key.keysym.sym) {
+                        case SDLK_ESCAPE:
+                        case SDLK_BACKSPACE:
+                            printf("MainEvent\n");
+                            return;
+                        case SDLK_z:
+                            Revoke();
+                            printf("REVOKE\n");
+                            break;
+                        case SDLK_r:
+                            Restart();
+                            printf("RESTART\n");
+                            break;
+                        case SDLK_w:
+                        case SDLK_UP:
+                            Move(1, 1);
+                            break;
+                        case SDLK_s:
+                        case SDLK_DOWN:
+                            Move(1, 0);
+                            break;
+                        case SDLK_a:
+                        case SDLK_LEFT:
+                            Move(0, 1);
+                            break;
+                        case SDLK_d:
+                        case SDLK_RIGHT:
+                            Move(0, 0);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case SDL_MOUSEMOTION:
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                    DownButtonX = PlayEvent.button.x;
+                    DownButtonY = PlayEvent.button.y;
+                    printf("(%d,%d)\n", PlayEvent.button.x, PlayEvent.button.y);
+                    break;
+                case SDL_MOUSEBUTTONUP:
+                    UpButtonX = PlayEvent.button.x;
+                    UpButtonY = PlayEvent.button.y;
+                    if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && DownButtonY - UpButtonY > 100)
                         Move(1, 1);
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    case SDLK_s:
-                    case SDLK_DOWN:
+                    else if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && UpButtonY - DownButtonY > 100)
                         Move(1, 0);
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    case SDLK_a:
-                    case SDLK_LEFT:
+                    else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && DownButtonX - UpButtonX > 100)
                         Move(0, 1);
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    case SDLK_d:
-                    case SDLK_RIGHT:
+                    else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && UpButtonX - DownButtonX > 100)
                         Move(0, 0);
-                        printf("Score=%d  BestScore=%d\n", Score, BestScore);
-                        break;
-                    default:
-                        break;
-                }
-                break;
-            case SDL_MOUSEMOTION:
-                break;
-            case SDL_MOUSEBUTTONDOWN:
-                DownButtonX = PlayEvent.button.x;
-                DownButtonY = PlayEvent.button.y;
-                printf("(%d,%d)\n", PlayEvent.button.x, PlayEvent.button.y);
-                break;
-            case SDL_MOUSEBUTTONUP:
-                UpButtonX = PlayEvent.button.x;
-                UpButtonY = PlayEvent.button.y;
-                if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && DownButtonY - UpButtonY > 100)
-                    Move(1, 1);
-                else if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && UpButtonY - DownButtonY > 100)
-                    Move(1, 0);
-                else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && DownButtonX - UpButtonX > 100)
-                    Move(0, 1);
-                else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && UpButtonX - DownButtonX > 100)
-                    Move(0, 0);
-                printf("(%d,%d)\n", PlayEvent.button.x, PlayEvent.button.y);
-                break;
-            default:
-                break;
+                    printf("(%d,%d)\n", PlayEvent.button.x, PlayEvent.button.y);
+                    break;
+                default:
+                    break;
+            }
+            SDL_Delay(10);
+            break;
         }
-        SDL_Delay(10);
     }
 }
 
-void PrintNotes() {
+void Move(int Dir1, int Dir2) {
+    SaveMap();
+    int IfMove = 0;
+    for (int i = 0; i < 4; ++i) {
+        if (!Map[Dir1 ? 0 : i][Dir1 ? i : 0] && !Map[Dir1 ? 1 : i][Dir1 ? i : 1] && !Map[Dir1 ? 2 : i][Dir1 ? i : 2] && !Map[Dir1 ? 3 : i][Dir1 ? i : 3])continue;
+        int Rec[4];
+        for (int j = 0; j < 4; ++j)Rec[j] = Map[Dir1 ? j : i][Dir1 ? i : j];
+        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1)
+            for (int k = 0; (Dir2 && k < 3 - j) || (!Dir2 && k < j); ++k)
+                if (!Map[Dir1 ? j : i][Dir1 ? i : j]) {
+                    for (int l = j; (Dir2 && l < 3) || (!Dir2 && l > 0); l += Dir2 ? 1 : -1)
+                        Map[Dir1 ? l : i][Dir1 ? i : l] = Map[Dir1 ? (Dir2 ? l + 1 : l - 1) : i][Dir1 ? i : (Dir2 ? l + 1 : l - 1)];
+                    Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
+                }
+        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1) {
+            if (Map[Dir1 ? j : i][Dir1 ? i : j] == Map[Dir1 ? (Dir2 ? j + 1 : j - 1) : i][Dir1 ? i : (Dir2 ? j + 1 : j - 1)] && Map[Dir1 ? j : i][Dir1 ? i : j] != 0) {
+                Map[Dir1 ? j : i][Dir1 ? i : j] *= 2;
+                Score += Map[Dir1 ? j : i][Dir1 ? i : j];
+                BestScore = BestScore < Score ? Score : BestScore;
+                if (Map[Dir1 ? j : i][Dir1 ? i : j] == 2048)GameWinMsgbox();
+                for (int k = Dir2 ? j + 1 : j - 1; (Dir2 && k < 3) || (!Dir2 && k > 0); k += Dir2 ? 1 : -1)
+                    Map[Dir1 ? k : i][Dir1 ? i : k] = Map[Dir1 ? (Dir2 ? k + 1 : k - 1) : i][Dir1 ? i : (Dir2 ? k + 1 : k - 1)];
+                Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
+                IfMove = 1;
+            }
+        }
+        if (!IfMove)
+            for (int j = 0; j < 4; ++j)
+                if (Rec[j] != Map[Dir1 ? j : i][Dir1 ? i : j])
+                    IfMove = 1;
+    }
+    PrintAll();
+    if (IfMove)RandomCreate();
+    IfOver();
+}
+
+void RandomCreate() {
+    int cnt = 0;
+    srand((unsigned) time(NULL));
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            if (!Map[i][j])cnt++;
+    if (!cnt)return;
+    SDL_Delay(200);
+    int pivot = rand() % cnt + 1;
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (!Map[i][j]) {
+                pivot--;
+                if (!pivot) {
+                    Map[i][j] = rand() % 4 ? 2 : 4;
+                    break;
+                }
+            }
+        }
+    }
+    PrintAll();
+}
+
+void IfOver() {
+    int cnt = 0;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            if (!Map[i][j])cnt++;
+    if (cnt)return;
+    int flag = 0;
+    for (int i = 0; i < 4; ++i) {
+        if (!flag)
+            for (int j = 0; j < 3; ++j)
+                if (Map[i][j] == Map[i][j + 1] || Map[j][i] == Map[j + 1][i]) {
+                    flag = 1;
+                    break;
+                }
+    }
+    if (!flag)GameOverMsgbox();
+}
+
+void SaveMap() {
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            OldMap[i][j] = Map[i][j];
+    OldScore = Score;
+    OldBestScore = BestScore;
+}
+
+void Revoke() {
+    int IfRevoke = 1;
+    for (int i = 0; i < 4; ++i) {
+        if (!IfRevoke)break;
+        for (int j = 0; j < 4; ++j)
+            if (Map[i][j] != OldMap[i][j]) {
+                IfRevoke = 0;
+                break;
+            }
+    }
+    if (IfRevoke)printf("You can only revoke one time !\n");
+    else {
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j)
+                Map[i][j] = OldMap[i][j];
+        Score = OldScore;
+        BestScore = OldBestScore;
+    }
+}
+
+void Restart() {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            Map[i][j] = 0;
+            OldMap[i][j] = 0;
+        }
+    }
+    Score = 0;
+    RandomCreate();
+}
+
+void GameOverMsgbox() {
+    Restart();
+}
+
+void GameWinMsgbox() {
+    if (!IfWin) {
+        return;
+    }
+    IfWin = 1;
+}
+
+void PrintAll() {
+    SDL_RenderClear(Renderer);
     SDL_RenderCopy(Renderer, PlayBackGroundTexture, NULL, NULL);
+    PrintTime();
+    PrintScores();
+    PrintNotes();
+    SDL_RenderPresent(Renderer);
+}
+
+void PrintTime() {
+    PlayEndTime = time(NULL);
+    int DurSecond = (int) difftime(PlayEndTime, PlayStartTime);
+    sprintf(TimeChar, "%.2d:%.2d:%.2d", DurSecond / 3600, DurSecond / 60 % 60, DurSecond % 60);
+    TimeSurface = TTF_RenderUTF8_Blended(TimeFont, TimeChar, FontColor);
+    TimeTexture = SDL_CreateTextureFromSurface(Renderer, TimeSurface);
+    TimeRect.x = 188;
+    TimeRect.y = 212;
+    TimeRect.w = TimeSurface->w;
+    TimeRect.h = TimeSurface->h;
+    SDL_RenderCopy(Renderer, TimeTexture, NULL, &TimeRect);
+}
+
+void PrintScores() {
+    sprintf(ScoreChar, "%d", Score);
+    ScoreSurface = TTF_RenderUTF8_Blended(ScoreFont, ScoreChar, FontColor);
+    ScoreTexture = SDL_CreateTextureFromSurface(Renderer, ScoreSurface);
+    ScoreRect.x = 580;
+    ScoreRect.y = 38;
+    ScoreRect.w = ScoreSurface->w;
+    ScoreRect.h = ScoreSurface->h;
+    SDL_RenderCopy(Renderer, ScoreTexture, NULL, &ScoreRect);
+    sprintf(BestScoreChar, "%d", BestScore);
+    ScoreSurface = TTF_RenderUTF8_Blended(ScoreFont, BestScoreChar, FontColor);
+    ScoreTexture = SDL_CreateTextureFromSurface(Renderer, ScoreSurface);
+    ScoreRect.x = 580;
+    ScoreRect.y = 94;
+    ScoreRect.w = ScoreSurface->w;
+    ScoreRect.h = ScoreSurface->h;
+    SDL_RenderCopy(Renderer, ScoreTexture, NULL, &ScoreRect);
+}
+
+void PrintNotes() {
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             switch (Map[i][j]) {
@@ -315,110 +514,6 @@ void PrintNotes() {
             }
         }
     }
-    SDL_RenderPresent(Renderer);
-}
-
-void RandomCreate() {
-    int cnt = 0;
-    srand((unsigned) time(NULL));
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            if (!Map[i][j])cnt++;
-        }
-    }
-    if (!cnt) {
-        PrintNotes();
-        return;
-    }
-    int pivot = rand() % cnt + 1;
-//    printf("cnt=%d pivot=%d\n", cnt, pivot);
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            if (!Map[i][j]) {
-                pivot--;
-                if (!pivot) {
-                    Map[i][j] = rand() % 4 ? 2 : 4;
-//                    printf("i=%d j=%d num=%d\n", i, j, Map[i][j]);
-                    break;
-                }
-            }
-        }
-    }
-    SDL_Delay(200);
-    PrintNotes();
-}
-
-void SaveMap() {
-    for (int i = 0; i < 4; ++i)
-        for (int j = 0; j < 4; ++j)
-            OldMap[i][j] = Map[i][j];
-    OldScore = Score;
-    OldBestScore = BestScore;
-}
-
-void Revoke() {
-    int IfRevoke = 1;
-    for (int i = 0; i < 4; ++i) {
-        if (!IfRevoke)break;
-        for (int j = 0; j < 4; ++j)
-            if (Map[i][j] != OldMap[i][j]) {
-                IfRevoke = 0;
-                break;
-            }
-    }
-    if (IfRevoke)printf("You can only revoke one time !\n");
-    else {
-        for (int i = 0; i < 4; ++i)
-            for (int j = 0; j < 4; ++j)
-                Map[i][j] = OldMap[i][j];
-        Score = OldScore;
-        BestScore = OldBestScore;
-    }
-}
-
-void Restart() {
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            Map[i][j] = 0;
-            OldMap[i][j] = 0;
-        }
-    }
-    Score = 0;
-    RandomCreate();
-}
-
-void Move(int Dir1, int Dir2) {
-    SaveMap();
-    int IfMove = 0;
-    for (int i = 0; i < 4; ++i) {
-        if (!Map[Dir1 ? 0 : i][Dir1 ? i : 0] && !Map[Dir1 ? 1 : i][Dir1 ? i : 1] && !Map[Dir1 ? 2 : i][Dir1 ? i : 2] && !Map[Dir1 ? 3 : i][Dir1 ? i : 3])continue;
-        int Rec[4];
-        for (int j = 0; j < 4; ++j)Rec[j] = Map[Dir1 ? j : i][Dir1 ? i : j];
-        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1)
-            for (int k = 0; (Dir2 && k < 3 - j) || (!Dir2 && k < j); ++k)
-                if (!Map[Dir1 ? j : i][Dir1 ? i : j]) {
-                    for (int l = j; (Dir2 && l < 3) || (!Dir2 && l > 0); l += Dir2 ? 1 : -1)
-                        Map[Dir1 ? l : i][Dir1 ? i : l] = Map[Dir1 ? (Dir2 ? l + 1 : l - 1) : i][Dir1 ? i : (Dir2 ? l + 1 : l - 1)];
-                    Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
-                }
-        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1) {
-            if (Map[Dir1 ? j : i][Dir1 ? i : j] == Map[Dir1 ? (Dir2 ? j + 1 : j - 1) : i][Dir1 ? i : (Dir2 ? j + 1 : j - 1)] && Map[Dir1 ? j : i][Dir1 ? i : j] != 0) {
-                Map[Dir1 ? j : i][Dir1 ? i : j] *= 2;
-                Score += Map[Dir1 ? j : i][Dir1 ? i : j];
-                BestScore = BestScore < Score ? Score : BestScore;
-                for (int k = Dir2 ? j + 1 : j - 1; (Dir2 && k < 3) || (!Dir2 && k > 0); k += Dir2 ? 1 : -1)
-                    Map[Dir1 ? k : i][Dir1 ? i : k] = Map[Dir1 ? (Dir2 ? k + 1 : k - 1) : i][Dir1 ? i : (Dir2 ? k + 1 : k - 1)];
-                Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
-                IfMove = 1;
-            }
-        }
-        if (!IfMove)
-            for (int j = 0; j < 4; ++j)
-                if (Rec[j] != Map[Dir1 ? j : i][Dir1 ? i : j])
-                    IfMove = 1;
-    }
-    PrintNotes();
-    if (IfMove)RandomCreate();
 }
 
 void StartAndLoad() {
@@ -426,31 +521,36 @@ void StartAndLoad() {
     MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
     PlayBackGroundSurface = IMG_Load("IMAGE/PlayBackGround.png");
     PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
+
+    ScoreFont = TTF_OpenFont("IMAGE/COPRGTB.TTF", 50);
+    TimeFont = TTF_OpenFont("IMAGE/COPRGTL.TTF", 50);
+
     Note2Surface = IMG_Load("IMAGE/Note2.png");
-    Note2Texture = SDL_CreateTextureFromSurface(Renderer, Note2Surface);
     Note4Surface = IMG_Load("IMAGE/Note4.png");
-    Note4Texture = SDL_CreateTextureFromSurface(Renderer, Note4Surface);
     Note8Surface = IMG_Load("IMAGE/Note8.png");
-    Note8Texture = SDL_CreateTextureFromSurface(Renderer, Note8Surface);
     Note16Surface = IMG_Load("IMAGE/Note16.png");
-    Note16Texture = SDL_CreateTextureFromSurface(Renderer, Note16Surface);
     Note32Surface = IMG_Load("IMAGE/Note32.png");
-    Note32Texture = SDL_CreateTextureFromSurface(Renderer, Note32Surface);
     Note64Surface = IMG_Load("IMAGE/Note64.png");
-    Note64Texture = SDL_CreateTextureFromSurface(Renderer, Note64Surface);
     Note128Surface = IMG_Load("IMAGE/Note128.png");
-    Note128Texture = SDL_CreateTextureFromSurface(Renderer, Note128Surface);
     Note256Surface = IMG_Load("IMAGE/Note256.png");
-    Note256Texture = SDL_CreateTextureFromSurface(Renderer, Note256Surface);
     Note512Surface = IMG_Load("IMAGE/Note512.png");
-    Note512Texture = SDL_CreateTextureFromSurface(Renderer, Note512Surface);
     Note1024Surface = IMG_Load("IMAGE/Note1024.png");
-    Note1024Texture = SDL_CreateTextureFromSurface(Renderer, Note1024Surface);
     Note2048Surface = IMG_Load("IMAGE/Note2048.png");
-    Note2048Texture = SDL_CreateTextureFromSurface(Renderer, Note2048Surface);
     Note4096Surface = IMG_Load("IMAGE/Note4096.png");
-    Note4096Texture = SDL_CreateTextureFromSurface(Renderer, Note4096Surface);
     Note8192Surface = IMG_Load("IMAGE/Note8192.png");
+
+    Note2Texture = SDL_CreateTextureFromSurface(Renderer, Note2Surface);
+    Note4Texture = SDL_CreateTextureFromSurface(Renderer, Note4Surface);
+    Note8Texture = SDL_CreateTextureFromSurface(Renderer, Note8Surface);
+    Note16Texture = SDL_CreateTextureFromSurface(Renderer, Note16Surface);
+    Note32Texture = SDL_CreateTextureFromSurface(Renderer, Note32Surface);
+    Note64Texture = SDL_CreateTextureFromSurface(Renderer, Note64Surface);
+    Note128Texture = SDL_CreateTextureFromSurface(Renderer, Note128Surface);
+    Note256Texture = SDL_CreateTextureFromSurface(Renderer, Note256Surface);
+    Note512Texture = SDL_CreateTextureFromSurface(Renderer, Note512Surface);
+    Note1024Texture = SDL_CreateTextureFromSurface(Renderer, Note1024Surface);
+    Note2048Texture = SDL_CreateTextureFromSurface(Renderer, Note2048Surface);
+    Note4096Texture = SDL_CreateTextureFromSurface(Renderer, Note4096Surface);
     Note8192Texture = SDL_CreateTextureFromSurface(Renderer, Note8192Surface);
 
     Note2Rect.w = Note2Surface->w;
@@ -513,6 +613,9 @@ void FreeAndQuit() {
     SDL_DestroyTexture(Note2048Texture);
     SDL_DestroyTexture(Note4096Texture);
     SDL_DestroyTexture(Note8192Texture);
+
+    TTF_CloseFont(ScoreFont);
+    TTF_CloseFont(TimeFont);
 
     SDL_DestroyRenderer(Renderer);
     SDL_DestroyWindow(Window);
