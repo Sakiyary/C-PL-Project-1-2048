@@ -11,23 +11,15 @@ void Move(int Dir1, int Dir2);//移动面板_核心算法
 
 void RandomCreate();//随机生成2或4
 
-void SaveMap();//储存面板
+void SaveMap(int RecMap[][4]);//储存面板
 
 void Revoke();//撤回一步
-
-void Pause();//暂停游戏
 
 void Restart();//重开游戏
 
 void IfOver();//判断是否游戏结束
 
-void GameOverMsgbox();//游戏结束弹窗
-
-void GameWinMsgbox();//游戏胜利弹窗
-
-void GamePauseMsgbox();//游戏暂停弹窗
-
-void GameRestartMsgbox();//游戏重开弹窗
+void MsgBox(int kind);
 
 void PrintAll();//清空渲染器，重新打印全部
 
@@ -41,22 +33,29 @@ void StartAndLoad();//启动并加载图片和字体
 
 void FreeAndQuit();//清除所有加载项并退出
 
-int IfBegin = 0, IfWin = 0;
+int IfBegin = 0, IfWin = 0, IfMsgBox = 0;
 
 int Score = 0, OldScore = 0, BestScore = 0, OldBestScore = 0;
 char ScoreChar[10], BestScoreChar[10];
 
 int DownButtonX, DownButtonY, UpButtonX, UpButtonY;
 
-time_t PlayStartTime, PlayEndTime, PauseTime;
+time_t PlayStartTime, PlayEndTime, PauseTime, MainTime;
 char TimeChar[10];
 
 int Map[4][4] = {
-        {0, 16, 32,  4096},
-        {0, 8,  64,  2048},
-        {0, 4,  128, 1024},
-        {0, 2,  256, 512}
+        {2, 32, 64,  8192},
+        {0, 16, 128, 4096},
+        {0, 8,  256, 2048},
+        {0, 4,  512, 1024}
 };
+
+// int Map[4][4] = {
+//         {0, 0, 0, 0},
+//         {0, 0, 0, 0},
+//         {0, 0, 0, 0},
+//         {0, 0, 0, 0}
+// };
 
 // int Map[4][4] = {
 //         {0, 0, 0, 0},
@@ -80,6 +79,17 @@ SDL_Texture *MainBackGroundTexture = NULL;
 
 SDL_Surface *PlayBackGroundSurface = NULL;
 SDL_Texture *PlayBackGroundTexture = NULL;
+
+SDL_Rect MsgBoxRect;
+
+SDL_Surface *GameOverMsgBoxSurface = NULL;
+SDL_Texture *GameOverMsgBoxTexture = NULL;
+
+SDL_Surface *GamePauseMsgBoxSurface = NULL;
+SDL_Texture *GamePauseMsgBoxTexture = NULL;
+
+SDL_Surface *GameWinMsgBoxSurface = NULL;
+SDL_Texture *GameWinMsgBoxTexture = NULL;
 
 TTF_Font *ScoreFont = NULL;
 SDL_Surface *ScoreSurface = NULL;
@@ -145,6 +155,9 @@ SDL_Surface *Note8192Surface = NULL;
 SDL_Texture *Note8192Texture = NULL;
 SDL_Rect Note8192Rect;
 
+SDL_Surface *Note16384Surface = NULL;
+SDL_Texture *Note16384Texture = NULL;
+SDL_Rect Note16384Rect;
 
 int main(int argc, char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -162,32 +175,33 @@ int main(int argc, char *argv[]) {
         switch (MainEvent.type) {
             case SDL_QUIT:
                 FreeAndQuit();
-            case SDL_MOUSEBUTTONDOWN:
-                printf("(%d,%d)\n", MainEvent.button.x, MainEvent.button.y);
-                if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
-                    if (!IfBegin)
-                        RandomCreate();
-                    PlayUI(PlayEvent);
-                }
-                break;
             case SDL_KEYDOWN:
                 switch (MainEvent.key.keysym.sym) {
                     case SDLK_ESCAPE:
                     case SDLK_BACKSPACE:
                         FreeAndQuit();
                     case SDLK_RETURN:
-                        if (!IfBegin)RandomCreate();
-                        for (int i = 0; i < 4; ++i) {
-                            for (int j = 0; j < 4; ++j) {
-                                printf("%d ", Map[i][j]);
-                            }
-                            printf("\n");
-                        }
+                        if (!IfBegin)
+                            RandomCreate();
                         PlayUI(PlayEvent);
+                        IfMsgBox = 0;
+                        MainTime = PauseTime ? PauseTime : time(NULL);
+                        printf("MainEvent\n");
                         break;
                     default:
                         break;
                 }
+            case SDL_MOUSEBUTTONUP:
+                printf("(%d,%d) in Main UI\n", MainEvent.button.x, MainEvent.button.y);
+                if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
+                    if (!IfBegin)
+                        RandomCreate();
+                    PlayUI(PlayEvent);
+                }
+                IfMsgBox = 0;
+                MainTime = PauseTime ? PauseTime : time(NULL);
+                printf("MainEvent\n");
+                break;
             default:
                 break;
         }
@@ -198,12 +212,16 @@ int main(int argc, char *argv[]) {
 
 
 void PlayUI(SDL_Event PlayEvent) {
-    PlayStartTime = time(NULL);
+    if (!IfBegin)PlayStartTime = time(NULL);
+    else PlayStartTime += (time(NULL) - MainTime);
     IfBegin = 1;
     printf("PlayEvent\n");
     while (1) {
-        PrintAll();
-        while (SDL_WaitEventTimeout(&PlayEvent, 100)) {
+        if (!IfMsgBox) {
+            PrintAll();
+            PauseTime = 0;
+        }
+        while (SDL_WaitEventTimeout(&PlayEvent, 100) || IfMsgBox) {
             switch (PlayEvent.type) {
                 case SDL_QUIT:
                     FreeAndQuit();
@@ -211,37 +229,45 @@ void PlayUI(SDL_Event PlayEvent) {
                     switch (PlayEvent.key.keysym.sym) {
                         case SDLK_ESCAPE:
                         case SDLK_BACKSPACE:
-                            printf("MainEvent\n");
+                            if (IfMsgBox == 2)Restart();
                             return;
                         case SDLK_z:
-                            Revoke();
-                            printf("REVOKE\n");
+                            if (IfMsgBox != 1)
+                                Revoke();
                             break;
                         case SDLK_r:
                             Restart();
-                            printf("RESTART\n");
                             break;
+                        case SDLK_RETURN:
+                        case SDLK_c:
+                            IfMsgBox = 0;
+                            PlayStartTime += time(NULL) - PauseTime;
+                            break;
+                        case SDLK_p:
+                            MsgBox(2);
                         case SDLK_w:
                         case SDLK_UP:
-                            Move(1, 1);
+                            if (!IfMsgBox)
+                                Move(1, 1);
                             break;
                         case SDLK_s:
                         case SDLK_DOWN:
-                            Move(1, 0);
+                            if (!IfMsgBox)
+                                Move(1, 0);
                             break;
                         case SDLK_a:
                         case SDLK_LEFT:
-                            Move(0, 1);
+                            if (!IfMsgBox)
+                                Move(0, 1);
                             break;
                         case SDLK_d:
                         case SDLK_RIGHT:
-                            Move(0, 0);
+                            if (!IfMsgBox)
+                                Move(0, 0);
                             break;
                         default:
                             break;
                     }
-                    break;
-                case SDL_MOUSEMOTION:
                     break;
                 case SDL_MOUSEBUTTONDOWN:
                     DownButtonX = PlayEvent.button.x;
@@ -251,14 +277,42 @@ void PlayUI(SDL_Event PlayEvent) {
                 case SDL_MOUSEBUTTONUP:
                     UpButtonX = PlayEvent.button.x;
                     UpButtonY = PlayEvent.button.y;
-                    if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && DownButtonY - UpButtonY > 100)
-                        Move(1, 1);
-                    else if (DownButtonX - UpButtonX < 100 && UpButtonX - DownButtonX < 100 && UpButtonY - DownButtonY > 100)
-                        Move(1, 0);
-                    else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && DownButtonX - UpButtonX > 100)
-                        Move(0, 1);
-                    else if (DownButtonY - UpButtonY < 100 && UpButtonY - DownButtonY < 100 && UpButtonX - DownButtonX > 100)
-                        Move(0, 0);
+                    int dx = DownButtonX - UpButtonX > 0 ? DownButtonX - UpButtonX : UpButtonX - DownButtonX;
+                    int dy = DownButtonY - UpButtonY > 0 ? DownButtonY - UpButtonY : UpButtonY - DownButtonY;
+                    if (!IfMsgBox) {
+                        if (dx < 20 && dy < 20 && UpButtonY > 210 && UpButtonY < 258) {
+                            if (UpButtonX > 465 && UpButtonX < 533)
+                                return;
+                            else if (UpButtonX > 546 && UpButtonX < 608)
+                                Revoke();
+                            else if (UpButtonX > 625 && UpButtonX < 690)
+                                Restart();
+                            else if (UpButtonX > 711 && UpButtonX < 772)
+                                MsgBox(2);
+                        } else if (dx < 100 && DownButtonY - UpButtonY > 100)
+                            Move(1, 1);
+                        else if (dx < 100 && UpButtonY - DownButtonY > 100)
+                            Move(1, 0);
+                        else if (dy < 100 && DownButtonX - UpButtonX > 100)
+                            Move(0, 1);
+                        else if (dy < 100 && UpButtonX - DownButtonX > 100)
+                            Move(0, 0);
+                    }
+                    if (IfMsgBox) {
+                        if (dx < 20 && dy < 20 && UpButtonY > 570 && UpButtonY < 638) {
+                            if (UpButtonX > 261 && UpButtonX < 323) {
+                                if (IfMsgBox == 2)Restart();
+                                return;
+                            } else if (UpButtonX > 467 && UpButtonX < 548)
+                                Restart();
+                            else if (UpButtonX > 370 && UpButtonX < 427) {
+                                if (IfMsgBox == 1) {
+                                    IfMsgBox = 0;
+                                    PlayStartTime += time(NULL) - PauseTime;
+                                } else Revoke();
+                            }
+                        }
+                    }
                     printf("(%d,%d)\n", PlayEvent.button.x, PlayEvent.button.y);
                     break;
                 default:
@@ -271,12 +325,15 @@ void PlayUI(SDL_Event PlayEvent) {
 }
 
 void Move(int Dir1, int Dir2) {
-    SaveMap();
     int IfMove = 0;
+    int RecMap[4][4];
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            RecMap[i][j] = Map[i][j];
+        }
+    }
     for (int i = 0; i < 4; ++i) {
         if (!Map[Dir1 ? 0 : i][Dir1 ? i : 0] && !Map[Dir1 ? 1 : i][Dir1 ? i : 1] && !Map[Dir1 ? 2 : i][Dir1 ? i : 2] && !Map[Dir1 ? 3 : i][Dir1 ? i : 3])continue;
-        int Rec[4];
-        for (int j = 0; j < 4; ++j)Rec[j] = Map[Dir1 ? j : i][Dir1 ? i : j];
         for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1)
             for (int k = 0; (Dir2 && k < 3 - j) || (!Dir2 && k < j); ++k)
                 if (!Map[Dir1 ? j : i][Dir1 ? i : j]) {
@@ -289,7 +346,7 @@ void Move(int Dir1, int Dir2) {
                 Map[Dir1 ? j : i][Dir1 ? i : j] *= 2;
                 Score += Map[Dir1 ? j : i][Dir1 ? i : j];
                 BestScore = BestScore < Score ? Score : BestScore;
-                if (Map[Dir1 ? j : i][Dir1 ? i : j] == 2048)GameWinMsgbox();
+                if (Map[Dir1 ? j : i][Dir1 ? i : j] == 2048 && !IfWin)IfWin = 1;
                 for (int k = Dir2 ? j + 1 : j - 1; (Dir2 && k < 3) || (!Dir2 && k > 0); k += Dir2 ? 1 : -1)
                     Map[Dir1 ? k : i][Dir1 ? i : k] = Map[Dir1 ? (Dir2 ? k + 1 : k - 1) : i][Dir1 ? i : (Dir2 ? k + 1 : k - 1)];
                 Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
@@ -298,11 +355,18 @@ void Move(int Dir1, int Dir2) {
         }
         if (!IfMove)
             for (int j = 0; j < 4; ++j)
-                if (Rec[j] != Map[Dir1 ? j : i][Dir1 ? i : j])
+                if (RecMap[Dir1 ? j : i][Dir1 ? i : j] != Map[Dir1 ? j : i][Dir1 ? i : j])
                     IfMove = 1;
     }
     PrintAll();
-    if (IfMove)RandomCreate();
+    if (IfMove) {
+        SaveMap(RecMap);
+        if (IfWin == 1) {
+            MsgBox(1);
+            IfWin = 2;
+        }
+        RandomCreate();
+    }
     IfOver();
 }
 
@@ -326,7 +390,8 @@ void RandomCreate() {
             }
         }
     }
-    PrintAll();
+
+    if (!IfMsgBox)PrintAll();
 }
 
 void IfOver() {
@@ -344,19 +409,21 @@ void IfOver() {
                     break;
                 }
     }
-    if (!flag)GameOverMsgbox();
+    if (!flag)MsgBox(0);
+
 }
 
-void SaveMap() {
+void SaveMap(int RecMap[][4]) {
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
-            OldMap[i][j] = Map[i][j];
+            OldMap[i][j] = RecMap[i][j];
     OldScore = Score;
     OldBestScore = BestScore;
 }
 
 void Revoke() {
-    int IfRevoke = 1;
+    IfMsgBox = 0;
+    int IfRevoke = 1, cnt = 0;
     for (int i = 0; i < 4; ++i) {
         if (!IfRevoke)break;
         for (int j = 0; j < 4; ++j)
@@ -365,8 +432,14 @@ void Revoke() {
                 break;
             }
     }
-    if (IfRevoke)printf("You can only revoke one time !\n");
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            if (!OldMap[i][j])
+                cnt++;
+    if (cnt == 16)printf("This is your first step !\n");
+    else if (IfRevoke)printf("You can only revoke one time !\n");
     else {
+        printf("Revoke\n");
         for (int i = 0; i < 4; ++i)
             for (int j = 0; j < 4; ++j)
                 Map[i][j] = OldMap[i][j];
@@ -375,6 +448,7 @@ void Revoke() {
     }
 }
 
+
 void Restart() {
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
@@ -382,19 +456,49 @@ void Restart() {
             OldMap[i][j] = 0;
         }
     }
+    PauseTime = 0;
     Score = 0;
+    IfBegin = 1;
+    IfMsgBox = 0;
+    IfWin = 0;
+    printf("Restart\n");
     RandomCreate();
+    PlayStartTime = time(NULL);
 }
 
-void GameOverMsgbox() {
+void MsgBox(int kind) {
+    //kind=0:Game Over; 1:Game Win; 2:Game Pause.
+    PauseTime = time(NULL);
+    SDL_Event MsgEvent;
+    IfMsgBox = 1;
+    switch (kind) {
+        case 0:
+            IfMsgBox = 2;
+            SDL_RenderCopy(Renderer, GameOverMsgBoxTexture, NULL, &MsgBoxRect);
+            SDL_RenderPresent(Renderer);
+            printf("Game Over\n");
+            break;
+        case 1:
+            SDL_RenderCopy(Renderer, GameWinMsgBoxTexture, NULL, &MsgBoxRect);;
+            SDL_RenderPresent(Renderer);
+            printf("Game Win\n");
+            break;
+        case 2:
+            SDL_RenderCopy(Renderer, GamePauseMsgBoxTexture, NULL, &MsgBoxRect);;
+            SDL_RenderPresent(Renderer);
+            printf("Pause\n");
+            break;
+        default:
+            break;
+    }
+}
+
+void GameOverMsgBox() {
     Restart();
 }
 
-void GameWinMsgbox() {
-    if (!IfWin) {
-        return;
-    }
-    IfWin = 1;
+void GameWinMsgBox() {
+
 }
 
 void PrintAll() {
@@ -509,6 +613,13 @@ void PrintNotes() {
                     Note8192Rect.y = 316 + 157 * i;
                     SDL_RenderCopy(Renderer, Note8192Texture, NULL, &Note8192Rect);
                     break;
+                case 16384:
+                case 32768:
+                case 65536:
+                case 131072:
+                    Note16384Rect.x = 88 + 162 * j;
+                    Note16384Rect.y = 316 + 157 * i;
+                    SDL_RenderCopy(Renderer, Note16384Texture, NULL, &Note16384Rect);
                 default:
                     break;
             }
@@ -518,9 +629,21 @@ void PrintNotes() {
 
 void StartAndLoad() {
     MainBackGroundSurface = IMG_Load("IMAGE/MainBackGround.png");
-    MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
     PlayBackGroundSurface = IMG_Load("IMAGE/PlayBackGround.png");
+    GameOverMsgBoxSurface = IMG_Load("IMAGE/GameOverMsgBox.png");
+    GamePauseMsgBoxSurface = IMG_Load("IMAGE/GamePauseMsgBox.png");
+    GameWinMsgBoxSurface = IMG_Load("IMAGE/GameWinMsgBox.png");
+
+    MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
     PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
+    GameOverMsgBoxTexture = SDL_CreateTextureFromSurface(Renderer, GameOverMsgBoxSurface);
+    GamePauseMsgBoxTexture = SDL_CreateTextureFromSurface(Renderer, GamePauseMsgBoxSurface);
+    GameWinMsgBoxTexture = SDL_CreateTextureFromSurface(Renderer, GameWinMsgBoxSurface);
+
+    MsgBoxRect.w = GameOverMsgBoxSurface->w;
+    MsgBoxRect.h = GameOverMsgBoxSurface->h;
+    MsgBoxRect.x = 100;
+    MsgBoxRect.y = 300;
 
     ScoreFont = TTF_OpenFont("IMAGE/COPRGTB.TTF", 50);
     TimeFont = TTF_OpenFont("IMAGE/COPRGTL.TTF", 50);
@@ -538,6 +661,7 @@ void StartAndLoad() {
     Note2048Surface = IMG_Load("IMAGE/Note2048.png");
     Note4096Surface = IMG_Load("IMAGE/Note4096.png");
     Note8192Surface = IMG_Load("IMAGE/Note8192.png");
+    Note16384Surface = IMG_Load("IMAGE/Note16384.png");
 
     Note2Texture = SDL_CreateTextureFromSurface(Renderer, Note2Surface);
     Note4Texture = SDL_CreateTextureFromSurface(Renderer, Note4Surface);
@@ -552,6 +676,7 @@ void StartAndLoad() {
     Note2048Texture = SDL_CreateTextureFromSurface(Renderer, Note2048Surface);
     Note4096Texture = SDL_CreateTextureFromSurface(Renderer, Note4096Surface);
     Note8192Texture = SDL_CreateTextureFromSurface(Renderer, Note8192Surface);
+    Note16384Texture = SDL_CreateTextureFromSurface(Renderer, Note16384Surface);
 
     Note2Rect.w = Note2Surface->w;
     Note2Rect.h = Note2Surface->h;
@@ -579,11 +704,16 @@ void StartAndLoad() {
     Note4096Rect.h = Note4096Surface->h;
     Note8192Rect.w = Note8192Surface->w;
     Note8192Rect.h = Note8192Surface->h;
+    Note16384Rect.w = Note16384Surface->w;
+    Note16384Rect.h = Note16384Surface->h;
 }
 
 void FreeAndQuit() {
     SDL_FreeSurface(MainBackGroundSurface);
     SDL_FreeSurface(PlayBackGroundSurface);
+    SDL_FreeSurface(GameOverMsgBoxSurface);
+    SDL_FreeSurface(GamePauseMsgBoxSurface);
+    SDL_FreeSurface(GameWinMsgBoxSurface);
     SDL_FreeSurface(Note2Surface);
     SDL_FreeSurface(Note4Surface);
     SDL_FreeSurface(Note8Surface);
@@ -597,9 +727,13 @@ void FreeAndQuit() {
     SDL_FreeSurface(Note2048Surface);
     SDL_FreeSurface(Note4096Surface);
     SDL_FreeSurface(Note8192Surface);
+    SDL_FreeSurface(Note16384Surface);
 
     SDL_DestroyTexture(MainBackGroundTexture);
     SDL_DestroyTexture(PlayBackGroundTexture);
+    SDL_DestroyTexture(GameOverMsgBoxTexture);
+    SDL_DestroyTexture(GamePauseMsgBoxTexture);
+    SDL_DestroyTexture(GameWinMsgBoxTexture);
     SDL_DestroyTexture(Note2Texture);
     SDL_DestroyTexture(Note4Texture);
     SDL_DestroyTexture(Note8Texture);
@@ -613,6 +747,7 @@ void FreeAndQuit() {
     SDL_DestroyTexture(Note2048Texture);
     SDL_DestroyTexture(Note4096Texture);
     SDL_DestroyTexture(Note8192Texture);
+    SDL_DestroyTexture(Note16384Texture);
 
     TTF_CloseFont(ScoreFont);
     TTF_CloseFont(TimeFont);
