@@ -1,6 +1,11 @@
-add_executable(8192 8192.c)
-target_link_libraries(8192 mingw32)
-target_link_libraries(8192 SDL2main)
-target_link_libraries(8192 SDL2)
-target_link_libraries(8192 SDL2_image)
-target_link_libraries(8192 SDL2_ttf)
+cmake_minimum_required(VERSION 3.20)
+project(211850016-Project-1)
+
+set(CMAKE_CXX_STANDARD 14)
+
+add_executable(Sakiyary_2048 "Sakiyary_2048.c")
+target_link_libraries(Sakiyary_2048 mingw32)
+target_link_libraries(Sakiyary_2048 SDL2main)
+target_link_libraries(Sakiyary_2048 SDL2)
+target_link_libraries(Sakiyary_2048 SDL2_image)
+target_link_libraries(Sakiyary_2048 SDL2_ttf)
