@@ -9,7 +9,7 @@ void StartAndLoad();//启动并加载图片和字体
 
 void PlayUI();//游戏界面
 
-void Move(int Dir1, int Dir2);//移动面板_核心算法
+void Move(int Dir1, int Dir2, int IfAuto);//移动面板_核心算法
 
 void RandomCreate();//随机生成2或4
 
@@ -66,16 +66,10 @@ SDL_Window *Window = NULL;
 SDL_Renderer *Renderer = NULL;
 
 SDL_Surface *MainBackGroundSurface = NULL;
-SDL_Texture *MainBackGroundTexture = NULL;
 SDL_Surface *PlayBackGroundSurface = NULL;
-SDL_Texture *PlayBackGroundTexture = NULL;
 SDL_Surface *MsgBoxSurface[3] = {NULL};
-SDL_Texture *MsgBoxTexture[3] = {NULL};
 SDL_Surface *NoteSurface[17] = {NULL};
-SDL_Texture *NoteTexture = NULL;
 SDL_Rect NoteRect;
-SDL_Surface *WordsSurface = NULL;
-SDL_Texture *WordsTexture = NULL;
 TTF_Font *Font = NULL;
 SDL_Color FontColor = {255, 255, 255, 255};
 
@@ -85,15 +79,17 @@ SDL_Event PlayEvent;
 int main(int argc, char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
-    Window = SDL_CreateWindow("Sakiyary's Infinite 2048 ", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);
+    Window = SDL_CreateWindow("Sakiyary$ Infinite 2048", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);
     Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
     StartAndLoad();
     srand((unsigned) time(NULL));
     printf("MainEvent\n");
     while (SDL_WaitEvent(&MainEvent)) {
         SDL_RenderClear(Renderer);
+        SDL_Texture *MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
         SDL_RenderCopy(Renderer, MainBackGroundTexture, NULL, NULL);
         SDL_RenderPresent(Renderer);
+        SDL_DestroyTexture(MainBackGroundTexture);
         switch (MainEvent.type) {
             case SDL_QUIT:
                 FreeAndQuit();
@@ -102,6 +98,7 @@ int main(int argc, char *argv[]) {
                     case SDLK_ESCAPE:
                     case SDLK_BACKSPACE:
                         FreeAndQuit();
+                    case SDLK_SPACE:
                     case SDLK_RETURN:
                         if (!IfBegin)
                             RandomCreate();
@@ -160,31 +157,40 @@ void PlayUI() {
                             Restart();
                             break;
                         case SDLK_RETURN:
-                        case SDLK_c:
-                            IfMsgBox = 0;
-                            PlayStartTime += time(NULL) - PauseTime;
+                            if (!IfMsgBox)Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
+                            else if (IfMsgBox == 2)Restart();
+                            else if (IfMsgBox == 1) {
+                                IfMsgBox = 0;
+                                PlayStartTime += time(NULL) - PauseTime;
+                            }
                             break;
-                        case SDLK_p:
-                            MsgBox(2);
                         case SDLK_w:
                         case SDLK_UP:
                             if (!IfMsgBox)
-                                Move(1, 1);
+                                Move(1, 1, 0);
                             break;
                         case SDLK_s:
                         case SDLK_DOWN:
                             if (!IfMsgBox)
-                                Move(1, 0);
+                                Move(1, 0, 0);
                             break;
                         case SDLK_a:
                         case SDLK_LEFT:
                             if (!IfMsgBox)
-                                Move(0, 1);
+                                Move(0, 1, 0);
                             break;
                         case SDLK_d:
                         case SDLK_RIGHT:
                             if (!IfMsgBox)
-                                Move(0, 0);
+                                Move(0, 0, 0);
+                            break;
+                        case SDLK_SPACE:
+                            if (!IfMsgBox)
+                                MsgBox(2);
+                            else if (IfMsgBox == 1) {
+                                IfMsgBox = 0;
+                                PlayStartTime += time(NULL) - PauseTime;
+                            }
                             break;
                         default:
                             break;
@@ -210,13 +216,13 @@ void PlayUI() {
                             else if (UpButtonX > 711 && UpButtonX < 772)
                                 MsgBox(2);
                         } else if (dx < 100 && DownButtonY - UpButtonY > 100)
-                            Move(1, 1);
+                            Move(1, 1, 0);
                         else if (dx < 100 && UpButtonY - DownButtonY > 100)
-                            Move(1, 0);
+                            Move(1, 0, 0);
                         else if (dy < 100 && DownButtonX - UpButtonX > 100)
-                            Move(0, 1);
+                            Move(0, 1, 0);
                         else if (dy < 100 && UpButtonX - DownButtonX > 100)
-                            Move(0, 0);
+                            Move(0, 0, 0);
                     }
                     if (IfMsgBox) {
                         if (dx < 20 && dy < 20 && UpButtonY > 570 && UpButtonY < 638) {
@@ -245,7 +251,7 @@ void PlayUI() {
     }
 }
 
-void Move(int Dir1, int Dir2) {
+void Move(int Dir1, int Dir2, int IfAuto) {
     int IfMove = 0;
     int RecMap[4][4];
     int RecScore = Score, RecBestScore = BestScore;
@@ -278,6 +284,10 @@ void Move(int Dir1, int Dir2) {
                 if (RecMap[Dir1 ? j : i][Dir1 ? i : j] != Map[Dir1 ? j : i][Dir1 ? i : j])
                     IfMove = 1;
     }
+    if (IfAuto && !IfMove) {
+        Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
+        return;
+    }
     PrintAllElements();
     if (IfMove) {//如果面板发生变动，保存该面板与分数
         for (int i = 0; i < 4; ++i)
@@ -308,7 +318,7 @@ void RandomCreate() {
                 if (!Map[i][j]) {
                     pivot--;
                     if (!pivot) {
-                        Map[i][j] = rand() > (RAND_MAX / 4) ? 1 : 2;//75%概率出现"2"; 25%概率出现"4".
+                        Map[i][j] = rand() > (RAND_MAX / 10) ? 1 : 2;//90%概率出现"2"; 10%概率出现"4"，此为最初版2048的源码数据
                         break;
                     }
                 }
@@ -383,13 +393,19 @@ void MsgBox(int kind) {//kind: 0代表游戏结束，1代表游戏胜利，2代�
     PauseTime = time(NULL);
     IfMsgBox = 1;
     if (!kind)IfMsgBox = 2;
-    SDL_RenderCopy(Renderer, MsgBoxTexture[kind], NULL, NULL);
+    SDL_Texture *MsgBoxTexture = SDL_CreateTextureFromSurface(Renderer, MsgBoxSurface[kind]);
+    SDL_RenderCopy(Renderer, MsgBoxTexture, NULL, NULL);
     SDL_RenderPresent(Renderer);
+    SDL_DestroyTexture(MsgBoxTexture);
 }
 
 void PrintAllElements() {
-    SDL_RenderClear(Renderer);
+    SDL_DestroyRenderer(Renderer);
+    Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Texture *PlayBackGroundTexture = NULL;
+    PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
     SDL_RenderCopy(Renderer, PlayBackGroundTexture, NULL, NULL);
+    SDL_DestroyTexture(PlayBackGroundTexture);
     PrintTime();
     PrintScores();
     PrintNotes();
@@ -400,23 +416,29 @@ void PrintTime() {
     PlayEndTime = time(NULL);
     int DurSecond = (int) difftime(PlayEndTime, PlayStartTime);
     sprintf(TimeChar, "%.2d:%.2d:%.2d", DurSecond / 3600, DurSecond / 60 % 60, DurSecond % 60);
-    WordsSurface = TTF_RenderUTF8_Blended(Font, TimeChar, FontColor);
-    WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
+    SDL_Surface *WordsSurface = TTF_RenderUTF8_Blended(Font, TimeChar, FontColor);
+    SDL_Texture *WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
     SDL_Rect TimeRect = {200, 212, WordsSurface->w, WordsSurface->h};
     SDL_RenderCopy(Renderer, WordsTexture, NULL, &TimeRect);
+    SDL_FreeSurface(WordsSurface);
+    SDL_DestroyTexture(WordsTexture);
 }
 
 void PrintScores() {
     sprintf(ScoreChar, "%d", Score);
-    WordsSurface = TTF_RenderUTF8_Blended(Font, ScoreChar, FontColor);
-    WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
-    SDL_Rect ScoreRect = {610, 38, WordsSurface->w, WordsSurface->h};
-    SDL_RenderCopy(Renderer, WordsTexture, NULL, &ScoreRect);
+    SDL_Surface *ScoreSurface = TTF_RenderUTF8_Blended(Font, ScoreChar, FontColor);
+    SDL_Texture *ScoreTexture = SDL_CreateTextureFromSurface(Renderer, ScoreSurface);
+    SDL_Rect ScoreRect = {690 - ScoreSurface->w / 2, 38, ScoreSurface->w, ScoreSurface->h};
+    SDL_RenderCopy(Renderer, ScoreTexture, NULL, &ScoreRect);
     sprintf(BestScoreChar, "%d", BestScore);
-    WordsSurface = TTF_RenderUTF8_Blended(Font, BestScoreChar, FontColor);
-    WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
-    SDL_Rect BestRect = {610, 100, WordsSurface->w, WordsSurface->h};
-    SDL_RenderCopy(Renderer, WordsTexture, NULL, &BestRect);
+    SDL_Surface *BestScoreSurface = TTF_RenderUTF8_Blended(Font, BestScoreChar, FontColor);
+    SDL_Texture *BestScoreTexture = SDL_CreateTextureFromSurface(Renderer, BestScoreSurface);
+    SDL_Rect BestRect = {690 - BestScoreSurface->w / 2, 100, BestScoreSurface->w, BestScoreSurface->h};
+    SDL_RenderCopy(Renderer, BestScoreTexture, NULL, &BestRect);
+    SDL_FreeSurface(ScoreSurface);
+    SDL_DestroyTexture(ScoreTexture);
+    SDL_FreeSurface(BestScoreSurface);
+    SDL_DestroyTexture(BestScoreTexture);
 }
 
 void PrintNotes() {
@@ -425,8 +447,10 @@ void PrintNotes() {
             NoteRect.x = 88 + 162 * j;
             NoteRect.y = 316 + 157 * i;
             if (Map[i][j]) {
+                SDL_Texture *NoteTexture = NULL;
                 NoteTexture = SDL_CreateTextureFromSurface(Renderer, NoteSurface[Map[i][j] < 17 ? Map[i][j] - 1 : 16]);
                 SDL_RenderCopy(Renderer, NoteTexture, NULL, &NoteRect);
+                SDL_DestroyTexture(NoteTexture);
             }
         }
 }
@@ -434,17 +458,11 @@ void PrintNotes() {
 void StartAndLoad() {
     MainBackGroundSurface = IMG_Load("IMAGE/MainBackGround.png");
     PlayBackGroundSurface = IMG_Load("IMAGE/PlayBackGround.png");
-
     for (int i = 0; i < 3; ++i) {
         char BoxName[20];
         sprintf(BoxName, "IMAGE/MsgBox%d.png", i);
         MsgBoxSurface[i] = IMG_Load(BoxName);
-        MsgBoxTexture[i] = SDL_CreateTextureFromSurface(Renderer, MsgBoxSurface[i]);
     }
-
-    MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
-    PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
-
     Font = TTF_OpenFont("IMAGE/GenshinDefault.TTF", 48);
     for (int i = 0; i < 17; ++i) {
         char PicName[20];
@@ -458,19 +476,11 @@ void StartAndLoad() {
 void FreeAndQuit() {
     SDL_FreeSurface(MainBackGroundSurface);
     SDL_FreeSurface(PlayBackGroundSurface);
-    SDL_FreeSurface(WordsSurface);
     for (int i = 0; i < 14; ++i)
         SDL_FreeSurface(NoteSurface[i]);
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 3; ++i)
         SDL_FreeSurface(MsgBoxSurface[i]);
-        SDL_DestroyTexture(MsgBoxTexture[i]);
-    }
-    SDL_DestroyTexture(MainBackGroundTexture);
-    SDL_DestroyTexture(PlayBackGroundTexture);
-    SDL_DestroyTexture(NoteTexture);
-    SDL_DestroyTexture(WordsTexture);
     TTF_CloseFont(Font);
-
     SDL_DestroyRenderer(Renderer);
     SDL_DestroyWindow(Window);
     SDL_Quit();
