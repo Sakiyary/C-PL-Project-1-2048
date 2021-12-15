@@ -21,7 +21,7 @@ void IfOver();//判断是否游戏结束
 
 void MsgBox(int kind);//游戏结束/暂停/胜利的选项框
 
-void PrintAll();//清空渲染器并重新打印全部
+void PrintAllElements();//清空渲染器并重新打印全部
 
 void PrintTime();//打印计时器的时间
 
@@ -42,10 +42,10 @@ time_t PlayStartTime, PlayEndTime, PauseTime, MainTime;
 char TimeChar[10];//打印时间需要的字符串
 
 int Map[4][4] = {
-        {1,  5, 6, 13},
-        {16, 4, 7, 12},
-        {16, 3, 8, 11},
-        {0,  2, 9, 10}
+        {0, 7, 8,  15},
+        {2, 6, 9,  14},
+        {3, 5, 10, 13},
+        {3, 4, 11, 12}
 };//测试用起始数据
 
 // int Map[4][4] = {
@@ -71,13 +71,12 @@ SDL_Surface *PlayBackGroundSurface = NULL;
 SDL_Texture *PlayBackGroundTexture = NULL;
 SDL_Surface *MsgBoxSurface[3] = {NULL};
 SDL_Texture *MsgBoxTexture[3] = {NULL};
-SDL_Surface *NoteSurface[14] = {NULL};
+SDL_Surface *NoteSurface[17] = {NULL};
 SDL_Texture *NoteTexture = NULL;
 SDL_Rect NoteRect;
 SDL_Surface *WordsSurface = NULL;
 SDL_Texture *WordsTexture = NULL;
-TTF_Font *ScoreFont = NULL;
-TTF_Font *TimeFont = NULL;
+TTF_Font *Font = NULL;
 SDL_Color FontColor = {255, 255, 255, 255};
 
 SDL_Event MainEvent;
@@ -140,7 +139,7 @@ void PlayUI() {
     printf("PlayEvent\n");
     while (1) {
         if (!IfMsgBox) {
-            PrintAll();
+            PrintAllElements();
             PauseTime = 0;
         }
         while (SDL_WaitEventTimeout(&PlayEvent, 100) || IfMsgBox) {
@@ -279,7 +278,7 @@ void Move(int Dir1, int Dir2) {
                 if (RecMap[Dir1 ? j : i][Dir1 ? i : j] != Map[Dir1 ? j : i][Dir1 ? i : j])
                     IfMove = 1;
     }
-    PrintAll();
+    PrintAllElements();
     if (IfMove) {//如果面板发生变动，保存该面板与分数
         for (int i = 0; i < 4; ++i)
             for (int j = 0; j < 4; ++j)
@@ -309,11 +308,11 @@ void RandomCreate() {
                 if (!Map[i][j]) {
                     pivot--;
                     if (!pivot) {
-                        Map[i][j] = rand() > (RAND_MAX / 5) ? 1 : 2;//80%概率出现"2"; 20%概率出现"4".
+                        Map[i][j] = rand() > (RAND_MAX / 4) ? 1 : 2;//75%概率出现"2"; 25%概率出现"4".
                         break;
                     }
                 }
-    if (!IfMsgBox)PrintAll();
+    if (!IfMsgBox)PrintAllElements();
 }
 
 void IfOver() {
@@ -388,7 +387,7 @@ void MsgBox(int kind) {//kind: 0代表游戏结束，1代表游戏胜利，2代�
     SDL_RenderPresent(Renderer);
 }
 
-void PrintAll() {
+void PrintAllElements() {
     SDL_RenderClear(Renderer);
     SDL_RenderCopy(Renderer, PlayBackGroundTexture, NULL, NULL);
     PrintTime();
@@ -401,22 +400,22 @@ void PrintTime() {
     PlayEndTime = time(NULL);
     int DurSecond = (int) difftime(PlayEndTime, PlayStartTime);
     sprintf(TimeChar, "%.2d:%.2d:%.2d", DurSecond / 3600, DurSecond / 60 % 60, DurSecond % 60);
-    WordsSurface = TTF_RenderUTF8_Blended(TimeFont, TimeChar, FontColor);
+    WordsSurface = TTF_RenderUTF8_Blended(Font, TimeChar, FontColor);
     WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
-    SDL_Rect TimeRect = {188, 212, WordsSurface->w, WordsSurface->h};
+    SDL_Rect TimeRect = {200, 212, WordsSurface->w, WordsSurface->h};
     SDL_RenderCopy(Renderer, WordsTexture, NULL, &TimeRect);
 }
 
 void PrintScores() {
     sprintf(ScoreChar, "%d", Score);
-    WordsSurface = TTF_RenderUTF8_Blended(ScoreFont, ScoreChar, FontColor);
+    WordsSurface = TTF_RenderUTF8_Blended(Font, ScoreChar, FontColor);
     WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
-    SDL_Rect ScoreRect = {580, 38, WordsSurface->w, WordsSurface->h};
+    SDL_Rect ScoreRect = {610, 38, WordsSurface->w, WordsSurface->h};
     SDL_RenderCopy(Renderer, WordsTexture, NULL, &ScoreRect);
     sprintf(BestScoreChar, "%d", BestScore);
-    WordsSurface = TTF_RenderUTF8_Blended(ScoreFont, BestScoreChar, FontColor);
+    WordsSurface = TTF_RenderUTF8_Blended(Font, BestScoreChar, FontColor);
     WordsTexture = SDL_CreateTextureFromSurface(Renderer, WordsSurface);
-    SDL_Rect BestRect = {580, 94, WordsSurface->w, WordsSurface->h};
+    SDL_Rect BestRect = {610, 100, WordsSurface->w, WordsSurface->h};
     SDL_RenderCopy(Renderer, WordsTexture, NULL, &BestRect);
 }
 
@@ -426,7 +425,7 @@ void PrintNotes() {
             NoteRect.x = 88 + 162 * j;
             NoteRect.y = 316 + 157 * i;
             if (Map[i][j]) {
-                NoteTexture = SDL_CreateTextureFromSurface(Renderer, NoteSurface[Map[i][j] - 1 < 13 ? Map[i][j] - 1 : 13]);
+                NoteTexture = SDL_CreateTextureFromSurface(Renderer, NoteSurface[Map[i][j] < 17 ? Map[i][j] - 1 : 16]);
                 SDL_RenderCopy(Renderer, NoteTexture, NULL, &NoteRect);
             }
         }
@@ -446,9 +445,8 @@ void StartAndLoad() {
     MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
     PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
 
-    ScoreFont = TTF_OpenFont("IMAGE/COPRGTB.TTF", 50);
-    TimeFont = TTF_OpenFont("IMAGE/COPRGTL.TTF", 50);
-    for (int i = 0; i < 14; ++i) {
+    Font = TTF_OpenFont("IMAGE/GenshinDefault.TTF", 48);
+    for (int i = 0; i < 17; ++i) {
         char PicName[20];
         sprintf(PicName, "IMAGE/Note%d.png", i + 1);
         NoteSurface[i] = IMG_Load(PicName);
@@ -471,8 +469,7 @@ void FreeAndQuit() {
     SDL_DestroyTexture(PlayBackGroundTexture);
     SDL_DestroyTexture(NoteTexture);
     SDL_DestroyTexture(WordsTexture);
-    TTF_CloseFont(ScoreFont);
-    TTF_CloseFont(TimeFont);
+    TTF_CloseFont(Font);
 
     SDL_DestroyRenderer(Renderer);
     SDL_DestroyWindow(Window);
