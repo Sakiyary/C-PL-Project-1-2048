@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
                     case SDLK_RETURN:
                         if (!IfBegin)
                             RandomCreate();
-                        if (PlayUI())return 0;
+                        if (PlayUI())
+                            return 0;
                         IfMsgBox = 0;
                         MainTime = PauseTime ? PauseTime : time(NULL);
                         printf("MainEvent\n");
@@ -116,7 +117,8 @@ int main(int argc, char *argv[]) {
                 if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
                     if (!IfBegin)
                         RandomCreate();
-                    if (PlayUI())return 0;
+                    if (PlayUI())
+                        return 0;
                 }
                 IfMsgBox = 0;
                 MainTime = PauseTime ? PauseTime : time(NULL);
@@ -150,7 +152,8 @@ int PlayUI() {
                     switch (PlayEvent.key.keysym.sym) {
                         case SDLK_ESCAPE:
                         case SDLK_BACKSPACE:
-                            if (IfMsgBox == 2)Restart();
+                            if (IfMsgBox == 2)
+                                Restart();
                             return 0;
                         case SDLK_z:
                             if (IfMsgBox != 1)
@@ -160,8 +163,10 @@ int PlayUI() {
                             Restart();
                             break;
                         case SDLK_RETURN:
-                            if (!IfMsgBox)Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
-                            else if (IfMsgBox == 2)Restart();
+                            if (!IfMsgBox)
+                                Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
+                            else if (IfMsgBox == 2)
+                                Restart();
                             else if (IfMsgBox == 1) {
                                 IfMsgBox = 0;
                                 PlayStartTime += time(NULL) - PauseTime;
@@ -226,10 +231,11 @@ int PlayUI() {
                             Move(0, 1, 0);
                         else if (dy < 100 && UpButtonX - DownButtonX > 100)
                             Move(0, 0, 0);
-                    } else if (IfMsgBox) {
+                    } else {
                         if (dx < 20 && dy < 20 && UpButtonY > 570 && UpButtonY < 638) {
                             if (UpButtonX > 261 && UpButtonX < 323) {
-                                if (IfMsgBox == 2)Restart();
+                                if (IfMsgBox == 2)
+                                    Restart();
                                 return 0;
                             } else if (UpButtonX > 467 && UpButtonX < 548)
                                 Restart();
@@ -237,12 +243,15 @@ int PlayUI() {
                                 if (IfMsgBox == 1) {
                                     IfMsgBox = 0;
                                     PlayStartTime += time(NULL) - PauseTime;
-                                } else Revoke();
+                                } else
+                                    Revoke();
                             }
                         }
                     }
-                    if (!IfMsgBox)printf("(%d,%d) in Play UI\n", PlayEvent.button.x, PlayEvent.button.y);
-                    else printf("(%d,%d) in MsgBox UI\n", PlayEvent.button.x, PlayEvent.button.y);
+                    if (!IfMsgBox)
+                        printf("(%d,%d) in Play UI\n", PlayEvent.button.x, PlayEvent.button.y);
+                    else
+                        printf("(%d,%d) in MsgBox UI\n", PlayEvent.button.x, PlayEvent.button.y);
                     break;
                 default:
                     break;
@@ -286,7 +295,7 @@ void Move(int Dir1, int Dir2, int IfAuto) {//统一命名 列数为i 行数为j
                 }
 
         for (int j = 0; j < 3; ++j) {//相同数字按照规则合并且计算分数判断胜局
-            if (Map[j][i] == Map[j + 1][i] && Map[j][i] != 0) {
+            if (Map[j][i] == Map[j + 1][i] && Map[j][i]) {
                 Map[j][i]++;
                 Score += 1 << Map[j][i];
                 BestScore = BestScore < Score ? Score : BestScore;
@@ -332,7 +341,7 @@ void Move(int Dir1, int Dir2, int IfAuto) {//统一命名 列数为i 行数为j
         OldBestScore = RecBestScore;
         if (IfWin == 1) {
             MsgBox(1);
-            IfWin = 2;//0表示未胜利，1表示需要在一步操作结束后跳出胜利界面，2表示已经宣告过胜利故不用再次宣告。
+            IfWin = 2;//0表示未胜利 1表示需要在一步操作结束后跳出胜利界面 2表示已经宣告过胜利故不用再次宣告。
         }
         RandomCreate();
     }
@@ -343,8 +352,10 @@ void RandomCreate() {
     int cnt = 0;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
-            if (!Map[i][j])cnt++;//统计空位的个数
-    if (!cnt)return;//如果没有空位就返回
+            if (!Map[i][j])
+                cnt++;//统计空位的个数
+    if (!cnt)
+        return;//如果没有空位就返回
     SDL_Delay(100);//延迟100毫秒再生成新的数字
     int pivot = rand() % cnt + 1;
     for (int i = 0; i < 4; ++i)
@@ -353,7 +364,7 @@ void RandomCreate() {
                 if (!Map[i][j]) {
                     pivot--;
                     if (!pivot) {
-                        Map[i][j] = rand() > (RAND_MAX / 10) ? 1 : 2;//90%概率出现"2"; 10%概率出现"4"，此为最初版2048的源码数据
+                        Map[i][j] = rand() > (RAND_MAX / 10) ? 1 : 2;//90%概率出现"2" 10%概率出现"4" 此为最初版2048的源码数据参数
                         break;
                     }
                 }
@@ -364,8 +375,10 @@ void IfOver() {
     int cnt = 0;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
-            if (!Map[i][j])cnt++;//统计空位的个数
-    if (cnt)return;//有空位就返回
+            if (!Map[i][j])
+                cnt++;//统计空位的个数
+    if (cnt)
+        return;//有空位就返回
     int flag = 0;
     for (int i = 0; i < 4; ++i)
         if (!flag)
@@ -394,7 +407,7 @@ void Revoke() {
             if (!OldMap[i][j])
                 cnt++;
     if (cnt == 16)
-        printf("This is your first step !\n");//这两句提示并没有做进图形界面中 可以注释掉
+        printf("This is your first step !\n");//这三句提示并没有做进图形界面中 可以注释掉
     else if (IfRevoke)
         printf("You can revoke for only one time !\n");
     else {
@@ -427,7 +440,8 @@ void Restart() {//全部/remake!!!除了最高分
 void MsgBox(int kind) {//kind: 0代表游戏结束，1代表游戏胜利，2代表游戏暂停.
     PauseTime = time(NULL);
     IfMsgBox = 1;
-    if (!kind)IfMsgBox = 2;
+    if (!kind)
+        IfMsgBox = 2;
     SDL_Texture *MsgBoxTexture = SDL_CreateTextureFromSurface(Renderer, MsgBoxSurface[kind]);
     SDL_RenderCopy(Renderer, MsgBoxTexture, NULL, NULL);
     SDL_RenderPresent(Renderer);

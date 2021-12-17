@@ -104,7 +104,7 @@
 
 ​	所有随机数所用种子为`srand((unsigned)time(NULL))`，并用类似于`rand()>RAND_MAX/2`而不是`rand()%2`的判断语句来进行随机的操作。
 
-​	内存泄漏的bug应该已经修复，但我测试时还是会占用100MB左右的内存，不知道该如何缩减。
+​	内存巨大泄漏的bug应该已经修复，但我测试时还是会占用100MB左右的内存，不知道该如何缩减。随着游玩时间的增加，内存占用会缓慢上升，玩10分钟后会占用到400MB以上，且不会减少，不知该如何优化。
 
 ​	这次是全程使用了git，虽说没有/remake过，但确实在写代码的时候变得很安心。
 
@@ -112,4 +112,37 @@
 
 ​	感谢游玩！
 
-——211850016
+——211850016 于2021/12/15晚
+
+
+
+2021/12/17更新：本来的Move函数是用三目运算符堆出来的(如下)，可读性实在是不忍直视，故更新了代码，改用了数组旋转。
+
+```c
+void Move(int Dir1, int Dir2) {
+    for (int i = 0; i < 4; ++i) {
+        if (!Map[Dir1 ? 0 : i][Dir1 ? i : 0] && !Map[Dir1 ? 1 : i][Dir1 ? i : 1] && !Map[Dir1 ? 2 : i][Dir1 ? i : 2] && !Map[Dir1 ? 3 : i][Dir1 ? i : 3])
+            continue;
+        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1)
+            for (int k = 0; (Dir2 && k < 3 - j) || (!Dir2 && k < j); ++k)
+                if (!Map[Dir1 ? j : i][Dir1 ? i : j]) {
+                    for (int l = j; (Dir2 && l < 3) || (!Dir2 && l > 0); l += Dir2 ? 1 : -1)
+                        Map[Dir1 ? l : i][Dir1 ? i : l] = Map[Dir1 ? (Dir2 ? l + 1 : l - 1) : i][Dir1 ? i : (Dir2 ? l + 1 : l - 1)];
+                    Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
+                }
+        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1) {
+            if (Map[Dir1 ? j : i][Dir1 ? i : j] == Map[Dir1 ? (Dir2 ? j + 1 : j - 1) : i][Dir1 ? i : (Dir2 ? j + 1 : j - 1)] && Map[Dir1 ? j : i][Dir1 ? i : j] != 0) {
+                Map[Dir1 ? j : i][Dir1 ? i : j]++;
+                Score += 1 << Map[Dir1 ? j : i][Dir1 ? i : j];
+                BestScore = BestScore < Score ? Score : BestScore;
+                if (Map[Dir1 ? j : i][Dir1 ? i : j] == 11 && !IfWin)IfWin = 1;
+                for (int k = Dir2 ? j + 1 : j - 1; (Dir2 && k < 3) || (!Dir2 && k > 0); k += Dir2 ? 1 : -1)
+                    Map[Dir1 ? k : i][Dir1 ? i : k] = Map[Dir1 ? (Dir2 ? k + 1 : k - 1) : i][Dir1 ? i : (Dir2 ? k + 1 : k - 1)];
+                Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
+                IfMove = 1;
+            }
+        }
+    }
+}
+```
+
