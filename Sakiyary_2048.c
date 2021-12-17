@@ -29,16 +29,16 @@ void PrintScores();//打印分数与最高分
 
 void PrintNotes();//打印数字方块
 
-void FreeAndQuit();//清除所有加载项并退出,Free是个好习惯
+void FreeAndQuit();//清除所有加载项并退出 Free是个好习惯
 
-int IfBegin = 0, IfWin = 0, IfMsgBox = 0;
+int IfBegin = 0, IfWin = 0, IfMsgBox = 0;//判断是否开始/胜利/有对话框存在
 
-int Score = 0, OldScore = 0, BestScore = 0, OldBestScore = 0;
+int Score = 0, OldScore = 0, BestScore = 0, OldBestScore = 0;//游戏分数与最高分
 char ScoreChar[10], BestScoreChar[10];//打印分数需要的字符串
 
-int DownButtonX, DownButtonY, UpButtonX, UpButtonY;
+int DownButtonX, DownButtonY, UpButtonX, UpButtonY;//鼠标按下与松开时的坐标
 
-time_t PlayStartTime, PlayEndTime, PauseTime, MainTime;
+time_t PlayStartTime, PlayEndTime, PauseTime, MainTime;//记录游戏时间与暂停时间
 char TimeChar[10];//打印时间需要的字符串
 
 int Map[4][4] = {
@@ -60,29 +60,29 @@ int OldMap[4][4] = {
         {0, 0, 0, 0},
         {0, 0, 0, 0},
         {0, 0, 0, 0}
-};
+};//供撤回用的旧面板
 
-SDL_Window *Window = NULL;
-SDL_Renderer *Renderer = NULL;
+SDL_Window *Window = NULL;//窗口
+SDL_Renderer *Renderer = NULL;//渲染器
 
-SDL_Surface *MainBackGroundSurface = NULL;
-SDL_Surface *PlayBackGroundSurface = NULL;
-SDL_Surface *MsgBoxSurface[3] = {NULL};
-SDL_Surface *NoteSurface[17] = {NULL};
-SDL_Rect NoteRect;
-TTF_Font *Font = NULL;
-SDL_Color FontColor = {255, 255, 255, 255};
+SDL_Surface *MainBackGroundSurface = NULL;//开始界面背景
+SDL_Surface *PlayBackGroundSurface = NULL;//游戏界面背景
+SDL_Surface *MsgBoxSurface[3] = {NULL};//三种对话框
+SDL_Surface *NoteSurface[17] = {NULL};//十七种数字图标
+SDL_Rect NoteRect;//数字图标的坐标与大小信息
+TTF_Font *Font = NULL;//字体
+SDL_Color FontColor = {255, 255, 255, 255};//字体颜色为白色
 
-SDL_Event MainEvent;
-SDL_Event PlayEvent;
+SDL_Event MainEvent;//开始事件
+SDL_Event PlayEvent;//游戏事件
 
 int main(int argc, char *argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
-    TTF_Init();
-    Window = SDL_CreateWindow("Sakiyary$ Infinite 2048", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);
-    StartAndLoad();
-    srand((unsigned) time(NULL));
-    printf("MainEvent\n");
+    SDL_Init(SDL_INIT_VIDEO);//SDL初始化
+    TTF_Init();//字体加载初始化
+    Window = SDL_CreateWindow("Sakiyary$ Infinite 2048", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);//创建窗口
+    StartAndLoad();//加载图片文件
+    srand((unsigned) time(NULL));//创建随机数种子
+    printf("MainEvent\n");//供测试用 可注释掉
     while (SDL_WaitEvent(&MainEvent)) {
         SDL_DestroyRenderer(Renderer);
         Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
@@ -253,48 +253,81 @@ int PlayUI() {
     }
 }
 
-void Move(int Dir1, int Dir2, int IfAuto) {
+void Move(int Dir1, int Dir2, int IfAuto) {//统一命名 列数为i 行数为j
     int IfMove = 0;
-    int RecMap[4][4];
+    int RecMap[4][4], TmpMap[4][4];
     int RecScore = Score, RecBestScore = BestScore;
-    for (int i = 0; i < 4; ++i)
+
+    for (int i = 0; i < 4; ++i)//将面板储存至暂时记录面板
         for (int j = 0; j < 4; ++j)
-            RecMap[i][j] = Map[i][j];
-    for (int i = 0; i < 4; ++i) {
-        if (!Map[Dir1 ? 0 : i][Dir1 ? i : 0] && !Map[Dir1 ? 1 : i][Dir1 ? i : 1] && !Map[Dir1 ? 2 : i][Dir1 ? i : 2] && !Map[Dir1 ? 3 : i][Dir1 ? i : 3])continue;
-        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1)
-            for (int k = 0; (Dir2 && k < 3 - j) || (!Dir2 && k < j); ++k)
-                if (!Map[Dir1 ? j : i][Dir1 ? i : j]) {
-                    for (int l = j; (Dir2 && l < 3) || (!Dir2 && l > 0); l += Dir2 ? 1 : -1)
-                        Map[Dir1 ? l : i][Dir1 ? i : l] = Map[Dir1 ? (Dir2 ? l + 1 : l - 1) : i][Dir1 ? i : (Dir2 ? l + 1 : l - 1)];
-                    Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
+            RecMap[j][i] = Map[j][i];
+
+    if (!Dir1 || !Dir2)//旋转面板使得移动方向总为向上移动
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j) {
+                if (Dir1 && !Dir2)
+                    Map[j][i] = RecMap[3 - j][i];
+                if (!Dir1 && Dir2)
+                    Map[j][i] = RecMap[3 - i][j];
+                if (!Dir1 && !Dir2)
+                    Map[j][i] = RecMap[i][3 - j];
+            }
+
+    for (int i = 0; i < 4; ++i) {//向上移动时每一列都可以分别处理
+        if (!Map[0][i] && !Map[1][i] && !Map[2][i] && !Map[3][i])
+            continue;//若都为零则不处理
+
+        for (int j = 0; j < 3; ++j)//消除所有可以缩去的0
+            for (int k = 0; k < 3 - j; ++k)
+                if (!Map[j][i]) {
+                    for (int l = j; l < 3; ++l)
+                        Map[l][i] = Map[l + 1][i];
+                    Map[3][i] = 0;
                 }
-        for (int j = Dir2 ? 0 : 3; (Dir2 && j < 3) || (!Dir2 && j > 0); j += Dir2 ? 1 : -1) {
-            if (Map[Dir1 ? j : i][Dir1 ? i : j] == Map[Dir1 ? (Dir2 ? j + 1 : j - 1) : i][Dir1 ? i : (Dir2 ? j + 1 : j - 1)] && Map[Dir1 ? j : i][Dir1 ? i : j] != 0) {
-                Map[Dir1 ? j : i][Dir1 ? i : j]++;
-                Score += 1 << Map[Dir1 ? j : i][Dir1 ? i : j];
+
+        for (int j = 0; j < 3; ++j) {//相同数字按照规则合并且计算分数判断胜局
+            if (Map[j][i] == Map[j + 1][i] && Map[j][i] != 0) {
+                Map[j][i]++;
+                Score += 1 << Map[j][i];
                 BestScore = BestScore < Score ? Score : BestScore;
-                if (Map[Dir1 ? j : i][Dir1 ? i : j] == 11 && !IfWin)IfWin = 1;
-                for (int k = Dir2 ? j + 1 : j - 1; (Dir2 && k < 3) || (!Dir2 && k > 0); k += Dir2 ? 1 : -1)
-                    Map[Dir1 ? k : i][Dir1 ? i : k] = Map[Dir1 ? (Dir2 ? k + 1 : k - 1) : i][Dir1 ? i : (Dir2 ? k + 1 : k - 1)];
-                Map[Dir1 ? (Dir2 ? 3 : 0) : i][Dir1 ? i : (Dir2 ? 3 : 0)] = 0;
-                IfMove = 1;
+                if (Map[j][i] == 11 && !IfWin)
+                    IfWin = 1;
+                for (int k = j + 1; k < 3; ++k)
+                    Map[k][i] = Map[k + 1][i];
+                Map[3][i] = 0;
             }
         }
-        if (!IfMove)//判断整个面板到底动没动
-            for (int j = 0; j < 4; ++j)
-                if (RecMap[Dir1 ? j : i][Dir1 ? i : j] != Map[Dir1 ? j : i][Dir1 ? i : j])
-                    IfMove = 1;
     }
+
+    if (!Dir1 || !Dir2) {//将面板再转回来
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j)
+                TmpMap[j][i] = Map[j][i];
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j) {
+                if (Dir1 && !Dir2)
+                    Map[j][i] = TmpMap[3 - j][i];
+                if (!Dir1 && Dir2)
+                    Map[j][i] = TmpMap[i][3 - j];
+                if (!Dir1 && !Dir2)
+                    Map[j][i] = TmpMap[3 - i][j];
+            }
+    }
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j)
+            if (RecMap[j][i] != Map[j][i])
+                IfMove = 1;//通过比较暂时储存面板与移动后面板 判断整个面板到底动没动
+
     if (IfAuto && !IfMove) {//如果是自动操作，面板却没有动，那再来一次
         Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
         return;
     }
     PrintAllElements();
-    if (IfMove) {//如果面板发生变动，保存该面板与分数
+
+    if (IfMove) {//如果面板发生变动 保存该面板与分数
         for (int i = 0; i < 4; ++i)
             for (int j = 0; j < 4; ++j)
-                OldMap[i][j] = RecMap[i][j];
+                OldMap[j][i] = RecMap[j][i];
         OldScore = RecScore;
         OldBestScore = RecBestScore;
         if (IfWin == 1) {
@@ -310,9 +343,9 @@ void RandomCreate() {
     int cnt = 0;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
-            if (!Map[i][j])cnt++;
-    if (!cnt)return;
-    SDL_Delay(100);
+            if (!Map[i][j])cnt++;//统计空位的个数
+    if (!cnt)return;//如果没有空位就返回
+    SDL_Delay(100);//延迟100毫秒再生成新的数字
     int pivot = rand() % cnt + 1;
     for (int i = 0; i < 4; ++i)
         if (pivot)
@@ -324,15 +357,15 @@ void RandomCreate() {
                         break;
                     }
                 }
-    if (!IfMsgBox && IfBegin)PrintAllElements();
+    if (!IfMsgBox && IfBegin)PrintAllElements();//如果游戏已经开始且非对话框界面 就重新打印界面
 }
 
 void IfOver() {
     int cnt = 0;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
-            if (!Map[i][j])cnt++;
-    if (cnt)return;
+            if (!Map[i][j])cnt++;//统计空位的个数
+    if (cnt)return;//有空位就返回
     int flag = 0;
     for (int i = 0; i < 4; ++i)
         if (!flag)
@@ -341,7 +374,7 @@ void IfOver() {
                     flag = 1;
                     break;
                 }
-    if (!flag)MsgBox(0);
+    if (!flag)MsgBox(0);//弹出游戏失败对话框
 }
 
 void Revoke() {
@@ -361,7 +394,7 @@ void Revoke() {
             if (!OldMap[i][j])
                 cnt++;
     if (cnt == 16)
-        printf("This is your first step !\n");
+        printf("This is your first step !\n");//这两句提示并没有做进图形界面中 可以注释掉
     else if (IfRevoke)
         printf("You can revoke for only one time !\n");
     else {
@@ -375,7 +408,7 @@ void Revoke() {
 }
 
 
-void Restart() {
+void Restart() {//全部/remake!!!除了最高分
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j) {
             Map[i][j] = 0;
@@ -463,7 +496,7 @@ void StartAndLoad() {
         sprintf(BoxName, "IMAGE/MsgBox%d.png", i);
         MsgBoxSurface[i] = IMG_Load(BoxName);
     }
-    Font = TTF_OpenFont("IMAGE/GenshinDefault.ttf", 48);
+    Font = TTF_OpenFont("IMAGE/GenshinDefault.ttf", 48);//由于Linux对于文件名大小写的高敏感性 注意后缀的大小写
     for (int i = 0; i < 17; ++i) {
         char PicName[20];
         sprintf(PicName, "IMAGE/Note%d.png", i + 1);
