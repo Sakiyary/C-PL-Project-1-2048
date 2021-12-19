@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
         switch (MainEvent.type) {
             case SDL_QUIT:
                 FreeAndQuit();
+                return 0;
             case SDL_KEYDOWN:
                 switch (MainEvent.key.keysym.sym) {
                     case SDLK_ESCAPE:
@@ -143,7 +144,7 @@ int PlayUI() {
             PrintAllElements();
             PauseTime = 0;
         }
-        while (SDL_WaitEventTimeout(&PlayEvent, 100) || IfMsgBox) {
+        while (SDL_WaitEventTimeout(&PlayEvent, 50) || IfMsgBox) {
             switch (PlayEvent.type) {
                 case SDL_QUIT:
                     FreeAndQuit();
@@ -356,7 +357,7 @@ void RandomCreate() {
                 cnt++;//统计空位的个数
     if (!cnt)
         return;//如果没有空位就返回
-    SDL_Delay(100);//延迟100毫秒再生成新的数字
+    SDL_Delay(50);//延迟100毫秒再生成新的数字
     int pivot = rand() % cnt + 1;
     for (int i = 0; i < 4; ++i)
         if (pivot)
