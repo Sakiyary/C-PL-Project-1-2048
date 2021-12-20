@@ -1,6 +1,6 @@
 #include "Sakiyary_2048.h"
 
-int main(int argc, char *argv[]) {
+int main(__attribute__((unused)) int argc, __attribute__((unused)) char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);//SDL初始化
     TTF_Init();//字体加载初始化
     Window = SDL_CreateWindow("Sakiyary$ Infinite 2048", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);//创建窗口
@@ -28,7 +28,8 @@ int main(int argc, char *argv[]) {
                     case SDLK_SPACE:
                     case SDLK_RETURN:
                         if (!IfBegin)
-                            RandomCreate();
+                            for (int i = 0; i < 2; ++i)
+                                RandomCreate();
                         SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
                         if (PlayUI())
                             return 0;
@@ -44,7 +45,8 @@ int main(int argc, char *argv[]) {
                 printf("(%d,%d) in Main UI\n", MainEvent.button.x, MainEvent.button.y);
                 if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
                     if (!IfBegin)
-                        RandomCreate();
+                        for (int i = 0; i < 2; ++i)
+                            RandomCreate();
                     SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
                     if (PlayUI())
                         return 0;
@@ -57,7 +59,6 @@ int main(int argc, char *argv[]) {
             default:
                 break;
         }
-        SDL_Delay(10);
         SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
     }
     FreeAndQuit();
@@ -75,7 +76,7 @@ int PlayUI() {
             PrintAllElements();
             PauseTime = 0;
         }
-        while (SDL_PollEvent(&PlayEvent) || IfMsgBox) {
+        while (SDL_WaitEventTimeout(&PlayEvent, 500) || IfMsgBox) {
             switch (PlayEvent.type) {
                 case SDL_QUIT:
                     FreeAndQuit();
@@ -263,7 +264,6 @@ void Move(int Dir1, int Dir2, int IfAuto) {//统一命名 列数为i 行数为j
         Move(rand() > RAND_MAX / 2, rand() > RAND_MAX / 2, 1);
         return;
     }
-    PrintAllElements();
 
     if (IfMove) {//如果面板发生变动 保存该面板与分数
         for (int i = 0; i < 4; ++i)
@@ -281,6 +281,8 @@ void Move(int Dir1, int Dir2, int IfAuto) {//统一命名 列数为i 行数为j
 }
 
 void RandomCreate() {
+//    if (!IfMsgBox && IfBegin)//此行代码会使游戏非常卡顿
+//        PrintAllElements();//如果游戏已经开始且非对话框界面 就重新打印界面
     int cnt = 0;
     for (int i = 0; i < 4; ++i)
         for (int j = 0; j < 4; ++j)
@@ -288,7 +290,6 @@ void RandomCreate() {
                 cnt++;//统计空位的个数
     if (!cnt)
         return;//如果没有空位就返回
-    SDL_Delay(50);//延迟100毫秒再生成新的数字
     int pivot = rand() % cnt + 1;
     for (int i = 0; i < 4; ++i)
         if (pivot)
@@ -300,7 +301,6 @@ void RandomCreate() {
                         break;
                     }
                 }
-    if (!IfMsgBox && IfBegin)PrintAllElements();//如果游戏已经开始且非对话框界面 就重新打印界面
 }
 
 void IfOver() {
@@ -319,7 +319,10 @@ void IfOver() {
                     flag = 1;
                     break;
                 }
-    if (!flag)MsgBox(0);//弹出游戏失败对话框
+    if (!flag) {
+        PrintAllElements();
+        MsgBox(0);//弹出游戏失败对话框
+    }
 }
 
 void Revoke() {
@@ -365,7 +368,8 @@ void Restart() {//全部/remake!!!除了最高分
     IfMsgBox = 0;
     IfWin = 0;
     printf("Restart\n");
-    RandomCreate();
+    for (int i = 0; i < 2; ++i)
+        RandomCreate();
     PlayStartTime = time(NULL);
 }
 
