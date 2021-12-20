@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
     StartAndLoad();//加载图片文件
     srand((unsigned) time(NULL));//创建随机数种子
     printf("MainEvent\n");//供测试用 可注释掉
+    SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
     while (SDL_WaitEvent(&MainEvent)) {
         SDL_DestroyRenderer(Renderer);
         Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
@@ -104,8 +105,10 @@ int main(int argc, char *argv[]) {
                     case SDLK_RETURN:
                         if (!IfBegin)
                             RandomCreate();
+                        SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
                         if (PlayUI())
                             return 0;
+                        SDL_COMPILE_TIME_ASSERT(PlayEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
                         IfMsgBox = 0;
                         MainTime = PauseTime ? PauseTime : time(NULL);
                         printf("MainEvent\n");
@@ -118,17 +121,20 @@ int main(int argc, char *argv[]) {
                 if (MainEvent.button.x > 205 && MainEvent.button.x < 604 && MainEvent.button.y > 650 && MainEvent.button.y < 777) {
                     if (!IfBegin)
                         RandomCreate();
+                    SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
                     if (PlayUI())
                         return 0;
+                    SDL_COMPILE_TIME_ASSERT(PlayEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
+                    IfMsgBox = 0;
+                    MainTime = PauseTime ? PauseTime : time(NULL);
+                    printf("MainEvent\n");
                 }
-                IfMsgBox = 0;
-                MainTime = PauseTime ? PauseTime : time(NULL);
-                printf("MainEvent\n");
                 break;
             default:
                 break;
         }
         SDL_Delay(10);
+        SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
     }
     FreeAndQuit();
     return 0;
@@ -139,12 +145,13 @@ int PlayUI() {
     else PlayStartTime += (time(NULL) - MainTime);
     IfBegin = 1;
     printf("PlayEvent\n");
+    SDL_COMPILE_TIME_ASSERT(PlayEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
     while (1) {
         if (!IfMsgBox) {
             PrintAllElements();
             PauseTime = 0;
         }
-        while (SDL_WaitEventTimeout(&PlayEvent, 50) || IfMsgBox) {
+        while (SDL_PollEvent(&PlayEvent) || IfMsgBox) {
             switch (PlayEvent.type) {
                 case SDL_QUIT:
                     FreeAndQuit();
@@ -257,7 +264,7 @@ int PlayUI() {
                 default:
                     break;
             }
-            SDL_Delay(10);
+            SDL_COMPILE_TIME_ASSERT(PlayEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
             break;
         }
     }
