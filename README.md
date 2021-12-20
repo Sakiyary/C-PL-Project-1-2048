@@ -152,7 +152,7 @@ void Move(int Dir1, int Dir2) {
 
 
 
-2021/12/20更新: 在翻SDL2库的时候发现一个美妙的函数：
+2021/12/20更新1: 在翻SDL2库的时候发现一个美妙的函数：
 
 ````c
 SDL_COMPILE_TIME_ASSERT(SDL_Event, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
@@ -163,3 +163,7 @@ SDL_COMPILE_TIME_ASSERT(SDL_Event, sizeof(SDL_Event) == sizeof(((SDL_Event *) NU
 运用此函数后程序整体内存占用可以动态控制在60MB以内。
 
 但是当快速按下方向键或wasd时操作还是会记录每一个操作并按序反应出来(虽说在本游戏问题并不大)。
+
+
+
+2021/12/20更新2: 试图写成多文件联合，但由于一开始接口没做好，现在改动太复杂了，故只把定义都集中到了`Sakiyary_2048.h`中。
