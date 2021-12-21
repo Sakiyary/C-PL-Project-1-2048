@@ -2,15 +2,15 @@
 
 int main(__attribute__((unused)) int argc, __attribute__((unused)) char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);//SDL初始化
+    SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);//忽视鼠标移动带来的事件处理与内存占用!!!
     TTF_Init();//字体加载初始化
     Window = SDL_CreateWindow("Sakiyary$ Infinite 2048", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 1000, SDL_WINDOW_SHOWN);//创建窗口
+    Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
     StartAndLoad();//加载图片文件
     srand((unsigned) time(NULL));//创建随机数种子
     printf("MainEvent\n");//供测试用 可注释掉
     SDL_COMPILE_TIME_ASSERT(MainEvent, sizeof(SDL_Event) == sizeof(((SDL_Event *) NULL)->padding));
     while (SDL_WaitEvent(&MainEvent)) {
-        SDL_DestroyRenderer(Renderer);
-        Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
         SDL_Texture *MainBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, MainBackGroundSurface);
         SDL_RenderCopy(Renderer, MainBackGroundTexture, NULL, NULL);
         SDL_RenderPresent(Renderer);
@@ -76,7 +76,7 @@ int PlayUI() {
             PrintAllElements();
             PauseTime = 0;
         }
-        while (SDL_WaitEventTimeout(&PlayEvent, 500) || IfMsgBox) {
+        while (SDL_PollEvent(&PlayEvent) || IfMsgBox) {
             switch (PlayEvent.type) {
                 case SDL_QUIT:
                     FreeAndQuit();
@@ -385,8 +385,6 @@ void MsgBox(int kind) {//kind: 0代表游戏结束，1代表游戏胜利，2代�
 }
 
 void PrintAllElements() {
-    SDL_DestroyRenderer(Renderer);
-    Renderer = SDL_CreateRenderer(Window, -1, SDL_RENDERER_ACCELERATED);
     SDL_Texture *PlayBackGroundTexture = SDL_CreateTextureFromSurface(Renderer, PlayBackGroundSurface);
     SDL_RenderCopy(Renderer, PlayBackGroundTexture, NULL, NULL);
     SDL_DestroyTexture(PlayBackGroundTexture);

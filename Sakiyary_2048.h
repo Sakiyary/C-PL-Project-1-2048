@@ -8,6 +8,8 @@
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_ttf.h"
 
+#undef main
+
 void StartAndLoad();//启动并加载图片和字体
 int PlayUI();//游戏界面
 void Move(int Dir1, int Dir2, int IfAuto);//移动面板_核心算法
