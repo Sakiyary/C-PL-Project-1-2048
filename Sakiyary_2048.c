@@ -1,6 +1,6 @@
 #include "Sakiyary_2048.h"
 
-int main(__attribute__((unused)) int argc, __attribute__((unused)) char *argv[]) {
+int main() {
     SDL_Init(SDL_INIT_VIDEO);//SDL初始化
     SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);//忽视鼠标移动带来的事件处理与内存占用!!!
     TTF_Init();//字体加载初始化
